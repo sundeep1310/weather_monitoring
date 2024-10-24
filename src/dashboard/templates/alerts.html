@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Alerts Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Header Section -->
+      <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">
+          Weather Alerts Dashboard
+        </h1>
+        <div class="flex items-center space-x-4">
+          <span id="lastUpdated" class="text-sm text-gray-500"></span>
+          <a href="/" class="text-indigo-600 hover:text-indigo-800 font-medium"
+            >Back to Main Dashboard</a
+          >
+        </div>
+      </div>
+
+      <!-- Alert Configuration Section -->
+      <div class="bg-white shadow rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">
+          Alert Configuration
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Temperature Threshold (°C)</label
+            >
+            <div class="mt-1 relative rounded-md shadow-sm">
+              <input
+                type="number"
+                id="tempThreshold"
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value="35"
+                step="0.1"
+              />
+            </div>
+            <p class="mt-1 text-sm text-gray-500">
+              Alert will trigger above this temperature
+            </p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700"
+              >Consecutive Readings Required</label
+            >
+            <div class="mt-1 relative rounded-md shadow-sm">
+              <input
+                type="number"
+                id="consecutiveReadings"
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value="2"
+                min="1"
+                max="5"
+              />
+            </div>
+            <p class="mt-1 text-sm text-gray-500">
+              Number of consecutive readings needed to trigger alert
+            </p>
+          </div>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button
+            onclick="updateConfiguration()"
+            class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            Update Configuration
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Alerts Section -->
+      <div class="bg-white shadow rounded-lg p-6 mb-8">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-800">Active Alerts</h2>
+          <span
+            id="activeAlertsCount"
+            class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded"
+            >0 Active</span
+          >
+        </div>
+        <div id="activeAlerts" class="space-y-4">
+          {% for alert in unacknowledged_alerts %}
+          <div
+            class="border rounded-lg p-4 bg-red-50 transition duration-300 ease-in-out"
+            data-alert-id="{{ alert.id }}"
+          >
+            <div class="flex justify-between items-start">
+              <div class="flex-grow">
+                <div class="flex items-center">
+                  <h3 class="font-semibold text-red-700">{{ alert.city }}</h3>
+                  <span
+                    class="ml-2 px-2 py-1 text-xs rounded-full {{ 'bg-red-200 text-red-800' if alert.alert_type == 'temperature' else 'bg-yellow-200 text-yellow-800' }}"
+                  >
+                    {{ alert.alert_type }}
+                  </span>
+                </div>
+                <div class="mt-2 grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p class="text-gray-600">
+                      Threshold:
+                      <span class="font-medium"
+                        >{{ alert.threshold_value }}°C</span
+                      >
+                    </p>
+                    <p class="text-gray-600">
+                      Current:
+                      <span class="font-medium"
+                        >{{ alert.actual_value }}°C</span
+                      >
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-gray-600">
+                      Duration:
+                      <span class="font-medium"
+                        >{{ moment(alert.timestamp).fromNow() }}</span
+                      >
+                    </p>
+                    <p class="text-gray-600">
+                      Status:
+                      <span class="font-medium text-red-600">Active</span>
+                    </p>
+                  </div>
+                </div>
+                <p class="mt-2 text-sm text-gray-700">{{ alert.message }}</p>
+              </div>
+              <div class="ml-4 flex flex-col space-y-2">
+                <button
+                  onclick="acknowledgeAlert({{ alert.id }})"
+                  class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  Acknowledge
+                </button>
+                <button
+                  onclick="snoozeAlert({{ alert.id }})"
+                  class="border border-red-600 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  Snooze
+                </button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Alert History Section -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-semibold text-gray-800">Alert History</h2>
+          <div class="flex space-x-4">
+            <select
+              id="cityFilter"
+              class="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="">All Cities</option>
+              {% for city in cities %}
+              <option value="{{ city.city }}">{{ city.city }}</option>
+              {% endfor %}
+            </select>
+            <select
+              id="timeFilter"
+              class="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="24">Last 24 Hours</option>
+              <option value="48">Last 48 Hours</option>
+              <option value="168">Last Week</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  City
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Alert Type
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Value
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Timestamp
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody id="alertHistory" class="bg-white divide-y divide-gray-200">
+              <!-- Alert history will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Update timestamp
+      function updateLastUpdated() {
+        const element = document.getElementById("lastUpdated");
+        element.textContent = `Last updated: ${moment().format("HH:mm:ss")}`;
+      }
+
+      // Handle alert acknowledgment
+      async function acknowledgeAlert(alertId) {
+        try {
+          const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (response.ok) {
+            const alertElement = document.querySelector(
+              `[data-alert-id="${alertId}"]`
+            );
+            if (alertElement) {
+              alertElement.classList.add("opacity-0");
+              setTimeout(() => alertElement.remove(), 300);
+            }
+            await loadAlertHistory();
+            updateActiveAlertsCount();
+          }
+        } catch (error) {
+          console.error("Error acknowledging alert:", error);
+        }
+      }
+
+      // Handle alert snooze
+      async function snoozeAlert(alertId) {
+        try {
+          const response = await fetch(`/api/alerts/${alertId}/snooze`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ duration: 30 }), // Snooze for 30 minutes
+          });
+
+          if (response.ok) {
+            const alertElement = document.querySelector(
+              `[data-alert-id="${alertId}"]`
+            );
+            if (alertElement) {
+              alertElement.classList.add("bg-gray-50");
+              const status = alertElement.querySelector(".text-red-600");
+              if (status) status.textContent = "Snoozed";
+            }
+          }
+        } catch (error) {
+          console.error("Error snoozing alert:", error);
+        }
+      }
+
+      // Load alert history
+      async function loadAlertHistory() {
+        const cityFilter = document.getElementById("cityFilter").value;
+        const timeFilter = document.getElementById("timeFilter").value;
+
+        try {
+          const response = await fetch(
+            `/api/alerts/history?hours=${timeFilter}&city=${cityFilter}`
+          );
+          const data = await response.json();
+
+          const historyTable = document.getElementById("alertHistory");
+          historyTable.innerHTML = data.alerts
+            .map(
+              (alert) => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${
+                          alert.city
+                        }</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="px-2 py-1 text-xs rounded-full ${
+                              alert.alert_type === "temperature"
+                                ? "bg-red-200 text-red-800"
+                                : "bg-yellow-200 text-yellow-800"
+                            }">
+                                ${alert.alert_type}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${
+                          alert.actual_value
+                        }°C</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${moment(
+                          alert.timestamp
+                        ).format("YYYY-MM-DD HH:mm:ss")}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 text-xs rounded-full ${
+                              alert.acknowledged
+                                ? "bg-green-200 text-green-800"
+                                : "bg-red-200 text-red-800"
+                            }">
+                                ${
+                                  alert.acknowledged ? "Acknowledged" : "Active"
+                                }
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${
+                              !alert.acknowledged
+                                ? `
+                                <button onclick="acknowledgeAlert(${alert.id})"
+                                        class="text-indigo-600 hover:text-indigo-900">
+                                    Acknowledge
+                                </button>
+                            `
+                                : ""
+                            }
+                        </td>
+                    </tr>
+                `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error loading alert history:", error);
+        }
+      }
+
+      // Update configuration
+      async function updateConfiguration() {
+        const tempThreshold = document.getElementById("tempThreshold").value;
+        const consecutiveReadings = document.getElementById(
+          "consecutiveReadings"
+        ).value;
+
+        try {
+          const response = await fetch("/api/alerts/config", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              temperature_threshold: parseFloat(tempThreshold),
+              consecutive_required: parseInt(consecutiveReadings),
+            }),
+          });
+
+          if (response.ok) {
+            // Show success message
+            alert("Configuration updated successfully");
+          }
+        } catch (error) {
+          console.error("Error updating configuration:", error);
+        }
+      }
+
+      // Update active alerts count
+      function updateActiveAlertsCount() {
+        const count = document.querySelectorAll("#activeAlerts > div").length;
+        const countElement = document.getElementById("activeAlertsCount");
+        countElement.textContent = `${count} Active`;
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        loadAlertHistory();
+        updateActiveAlertsCount();
+        updateLastUpdated();
+
+        // Set up filters
+        document
+          .getElementById("cityFilter")
+          .addEventListener("change", loadAlertHistory);
+        document
+          .getElementById("timeFilter")
+          .addEventListener("change", loadAlertHistory);
+
+        // Update timestamp every minute
+        setInterval(updateLastUpdated, 60000);
+
+        // Refresh data every 5 minutes
+        setInterval(() => {
+          loadAlertHistory();
+          updateActiveAlertsCount();
+        }, 300000);
+      });
+    </script>
+  </body>
+</html>

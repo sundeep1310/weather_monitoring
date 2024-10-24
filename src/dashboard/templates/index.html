@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Monitoring Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Header Section -->
+      <div class="flex flex-col sm:flex-row justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">
+          Weather Monitoring Dashboard
+        </h1>
+        <div id="lastUpdated" class="text-sm text-gray-500 mt-2 sm:mt-0"></div>
+      </div>
+
+      <!-- City Selection and Management -->
+      <div class="bg-white shadow rounded-lg p-6 mb-8">
+        <div
+          class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6"
+        >
+          <h2 class="text-xl font-semibold text-gray-800 mb-4 md:mb-0">
+            Select City
+          </h2>
+          <div class="flex flex-col sm:flex-row gap-4">
+            <input
+              type="text"
+              id="cityInput"
+              placeholder="Add new city"
+              class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onclick="addCity()"
+              class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Add City
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="errorMessage"
+          class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded"
+        ></div>
+
+        <!-- City Selection Tabs -->
+        <div class="flex overflow-x-auto pb-2 mb-4 gap-3" id="cityTabs">
+          <!-- City tabs will be inserted here -->
+          <div class="animate-pulse text-gray-400">Loading cities...</div>
+        </div>
+      </div>
+
+      <!-- Current Weather Panel -->
+      <div id="currentWeather" class="bg-white shadow rounded-lg p-6 mb-8">
+        <div class="animate-pulse text-gray-400">
+          Select a city to view weather details
+        </div>
+      </div>
+
+      <!-- Visualization Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Temperature Trends -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Temperature Trends
+          </h2>
+          <div id="temperatureChart" class="h-[400px]"></div>
+        </div>
+
+        <!-- Weather Distribution -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Weather Distribution
+          </h2>
+          <div id="weatherDistribution" class="h-[400px]"></div>
+        </div>
+
+        <!-- Hourly Weather -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Hourly Weather
+          </h2>
+          <div id="hourlyChart" class="h-[400px]"></div>
+        </div>
+
+        <!-- Weather Statistics -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Weather Statistics
+          </h2>
+          <div id="weatherStats" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Temperature Stats -->
+            <div class="bg-blue-50 rounded-lg p-4">
+              <h3 class="font-semibold text-blue-700 mb-2">Temperature</h3>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Current:</span>
+                  <span id="tempCurrent" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Average:</span>
+                  <span id="tempAvg" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Maximum:</span>
+                  <span id="tempMax" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Minimum:</span>
+                  <span id="tempMin" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Trend:</span>
+                  <span id="tempTrend" class="font-medium">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Humidity Stats -->
+            <div class="bg-green-50 rounded-lg p-4">
+              <h3 class="font-semibold text-green-700 mb-2">Humidity</h3>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Current:</span>
+                  <span id="humCurrent" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Average:</span>
+                  <span id="humAvg" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Maximum:</span>
+                  <span id="humMax" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Minimum:</span>
+                  <span id="humMin" class="font-medium">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wind Stats -->
+            <div class="bg-yellow-50 rounded-lg p-4">
+              <h3 class="font-semibold text-yellow-700 mb-2">Wind</h3>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Current:</span>
+                  <span id="windCurrent" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Average:</span>
+                  <span id="windAvg" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Maximum:</span>
+                  <span id="windMax" class="font-medium">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Weather Conditions -->
+            <div class="bg-purple-50 rounded-lg p-4">
+              <h3 class="font-semibold text-purple-700 mb-2">Conditions</h3>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Most Common:</span>
+                  <span id="commonWeather" class="font-medium">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let currentCity = null;
+
+      // Format temperature
+      function formatTemp(temp) {
+        return `${temp.toFixed(1)}°C`;
+      }
+
+      // Update timestamp
+      function updateLastUpdated() {
+        const now = moment().format("MMMM Do YYYY, h:mm:ss a");
+        document.getElementById(
+          "lastUpdated"
+        ).textContent = `Last Updated: ${now}`;
+      }
+
+      // Show error message
+      function showError(message) {
+        const errorDiv = document.getElementById("errorMessage");
+        errorDiv.textContent = message;
+        errorDiv.classList.remove("hidden");
+        setTimeout(() => {
+          errorDiv.classList.add("hidden");
+        }, 5000);
+      }
+
+      // Create city tab
+      function createCityTab(city, isActive = false) {
+        return `
+                <button
+                    class="px-4 py-2 rounded-lg transition-colors ${
+                      isActive
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }"
+                    onclick="selectCity('${city}')"
+                >
+                    ${city}
+                    <span class="ml-2 text-sm opacity-60" onclick="event.stopPropagation(); removeCity('${city}')">×</span>
+                </button>
+            `;
+      }
+
+      // Select city
+      async function selectCity(city) {
+        currentCity = city;
+
+        // Update tabs
+        const tabs = document.getElementById("cityTabs").children;
+        for (let tab of tabs) {
+          if (tab.innerText.includes(city)) {
+            tab.classList.add("bg-blue-500", "text-white");
+            tab.classList.remove("bg-gray-100", "text-gray-700");
+          } else {
+            tab.classList.remove("bg-blue-500", "text-white");
+            tab.classList.add("bg-gray-100", "text-gray-700");
+          }
+        }
+
+        // Update weather data
+        await updateWeatherData();
+      }
+
+      // Add city
+      async function addCity() {
+        const cityInput = document.getElementById("cityInput");
+        const city = cityInput.value.trim();
+
+        if (!city) {
+          showError("Please enter a city name");
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/cities", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ city, country: "IN" }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Failed to add city");
+          }
+
+          cityInput.value = "";
+          await loadCities();
+
+          // Select the newly added city
+          selectCity(city);
+        } catch (error) {
+          showError(error.message);
+        }
+      }
+
+      // Remove city
+      async function removeCity(city) {
+        try {
+          const response = await fetch(`/api/cities/${city}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Failed to remove city");
+          }
+
+          if (currentCity === city) {
+            currentCity = null;
+          }
+
+          await loadCities();
+        } catch (error) {
+          showError(error.message);
+        }
+      }
+
+      // Load cities
+      async function loadCities() {
+        try {
+          const response = await fetch("/api/cities");
+          const data = await response.json();
+
+          const cityTabs = document.getElementById("cityTabs");
+          cityTabs.innerHTML = data.cities
+            .map((city) => createCityTab(city.city, city.city === currentCity))
+            .join("");
+
+          if (!currentCity && data.cities.length > 0) {
+            selectCity(data.cities[0].city);
+          }
+        } catch (error) {
+          showError("Failed to load cities");
+        }
+      }
+
+      // Update weather data
+      async function updateWeatherData() {
+        if (!currentCity) return;
+
+        try {
+          const [currentResponse, visualizationResponse] = await Promise.all([
+            fetch(`/api/weather/current/${currentCity}`),
+            fetch(`/api/weather/visualization/${currentCity}`),
+          ]);
+
+          const weatherData = await currentResponse.json();
+          const visualizationData = await visualizationResponse.json();
+
+          // Update current weather panel
+          document.getElementById("currentWeather").innerHTML = `
+                    <div class="flex flex-col md:flex-row justify-between">
+                        <div class="md:w-1/2">
+                            <h2 class="text-xl font-semibold mb-4">${currentCity} Weather</h2>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Temperature</span>
+                                    <span class="text-2xl font-bold">${formatTemp(
+                                      weatherData.temperature
+                                    )}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Feels Like</span>
+                                    <span class="font-medium">${formatTemp(
+                                      weatherData.feels_like
+                                    )}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Humidity</span>
+                                    <span class="font-medium">${
+                                      weatherData.humidity
+                                    }%</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Wind Speed</span>
+                                    <span class="font-medium">${
+                                      weatherData.wind_speed
+                                    } m/s</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="md:w-1/2 mt-4 md:mt-0 md:ml-8">
+                            <div class="flex justify-center items-center h-full">
+                                <div class="text-center">
+                                    <div class="text-lg font-medium mb-2">Current Condition</div>
+                                    <div class="inline-block px-4 py-2 rounded-full ${getWeatherColor(
+                                      weatherData.main_weather
+                                    )}">
+                                        ${weatherData.main_weather}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+          // Update visualizations
+          if (visualizationData.temperature_chart) {
+            Plotly.newPlot(
+              "temperatureChart",
+              JSON.parse(visualizationData.temperature_chart)
+            );
+          }
+          if (visualizationData.weather_distribution) {
+            Plotly.newPlot(
+              "weatherDistribution",
+              JSON.parse(visualizationData.weather_distribution)
+            );
+          }
+          if (visualizationData.hourly_chart) {
+            Plotly.newPlot(
+              "hourlyChart",
+              JSON.parse(visualizationData.hourly_chart)
+            );
+          }
+
+          // Update weather stats
+          if (
+            visualizationData.weather_stats &&
+            !visualizationData.weather_stats.message
+          ) {
+            updateWeatherStats(visualizationData.weather_stats);
+          }
+
+          updateLastUpdated();
+        } catch (error) {
+          console.error("Failed to update weather data:", error);
+          showError("Failed to update weather data");
+        }
+      }
+
+      // Update weather stats
+      function updateWeatherStats(stats) {
+        // Temperature
+        document.getElementById("tempCurrent").textContent = formatTemp(
+          stats.temperature.current
+        );
+        document.getElementById("tempAvg").textContent = formatTemp(
+          stats.temperature.avg
+        );
+        document.getElementById("tempMax").textContent = formatTemp(
+          stats.temperature.max
+        );
+        document.getElementById("tempMin").textContent = formatTemp(
+          stats.temperature.min
+        );
+        document.getElementById("tempTrend").textContent =
+          stats.temperature.trend;
+
+        // Humidity
+        document.getElementById(
+          "humCurrent"
+        ).textContent = `${stats.humidity.current}%`;
+        document.getElementById(
+          "humAvg"
+        ).textContent = `${stats.humidity.avg}%`;
+        document.getElementById(
+          "humMax"
+        ).textContent = `${stats.humidity.max}%`;
+        document.getElementById(
+          "humMin"
+        ).textContent = `${stats.humidity.min}%`;
+
+        // Wind
+        document.getElementById(
+          "windCurrent"
+        ).textContent = `${stats.wind.current} m/s`;
+        document.getElementById(
+          "windAvg"
+        ).textContent = `${stats.wind.avg} m/s`;
+        document.getElementById(
+          "windMax"
+        ).textContent = `${stats.wind.max} m/s`;
+
+        // Conditions
+        document.getElementById("commonWeather").textContent =
+          stats.conditions.most_common;
+      }
+
+      // Get weather condition color classes
+      function getWeatherColor(condition) {
+        const colorMap = {
+          Clear: "bg-yellow-100 text-yellow-800",
+          Clouds: "bg-gray-100 text-gray-800",
+          Rain: "bg-blue-100 text-blue-800",
+          Snow: "bg-indigo-100 text-indigo-800",
+          Thunderstorm: "bg-purple-100 text-purple-800",
+          Drizzle: "bg-blue-100 text-blue-800",
+          Mist: "bg-gray-100 text-gray-800",
+          Smoke: "bg-gray-100 text-gray-800",
+          Haze: "bg-gray-100 text-gray-800",
+          Dust: "bg-yellow-100 text-yellow-800",
+          Fog: "bg-gray-100 text-gray-800",
+          Sand: "bg-yellow-100 text-yellow-800",
+          Ash: "bg-gray-100 text-gray-800",
+          Squall: "bg-purple-100 text-purple-800",
+          Tornado: "bg-red-100 text-red-800",
+        };
+        return colorMap[condition] || "bg-gray-100 text-gray-800";
+      }
+
+      // Initialize event listeners
+      function initializeEventListeners() {
+        // Listen for Enter key in city input
+        document
+          .getElementById("cityInput")
+          .addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+              addCity();
+            }
+          });
+
+        // Make charts responsive
+        window.addEventListener("resize", function () {
+          const charts = [
+            "temperatureChart",
+            "weatherDistribution",
+            "hourlyChart",
+          ];
+          charts.forEach((chartId) => {
+            const chart = document.getElementById(chartId);
+            if (chart && chart.data) {
+              Plotly.relayout(chartId, {
+                "xaxis.autorange": true,
+                "yaxis.autorange": true,
+              });
+            }
+          });
+        });
+      }
+
+      // Start periodic updates
+      function startPeriodicUpdates() {
+        // Update current city data every 5 minutes
+        setInterval(() => {
+          if (currentCity) {
+            updateWeatherData();
+          }
+        }, 5 * 60 * 1000);
+
+        // Update timestamp every minute
+        setInterval(updateLastUpdated, 60 * 1000);
+      }
+
+      // Initialize the dashboard
+      async function initializeDashboard() {
+        try {
+          await loadCities();
+          initializeEventListeners();
+          startPeriodicUpdates();
+        } catch (error) {
+          showError("Failed to initialize dashboard");
+          console.error("Dashboard initialization error:", error);
+        }
+      }
+
+      // Start the dashboard when the page loads
+      document.addEventListener("DOMContentLoaded", initializeDashboard);
+    </script>
+  </body>
+</html>
