@@ -198,13 +198,14 @@ Each city shows:
 ```
 weather-monitoring/
 ├── src/
+│   ├──dashboard/
+│   │  ├── templates/           # HTML templates
 │   ├── alerts.py         # Email alert system
 │   ├── config.py         # Configuration settings
 │   ├── data_processor.py # Data handling
 │   ├── visualization.py  # Chart generation
 │   └── weather_service.py# API interaction
 ├── static/              # Static files
-├── templates/           # HTML templates
 ├── main.py             # Main application
 ├── requirements.txt    # Dependencies
 └── docker-compose.yml  # Docker config
